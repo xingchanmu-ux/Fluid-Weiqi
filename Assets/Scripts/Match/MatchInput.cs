@@ -28,6 +28,15 @@ public class MatchInput : MonoBehaviour
 	bool isPrimaryDown;
 	float nextPrimaryPlaceTime;
 
+	// Touch-only controls (mobile)
+	const float LongPressDuration = 0.5f;
+	const float LongPressMoveTolerance = 0.05f;
+	float touchStartTime;
+	Vector2 touchStartPosition;
+	bool longPressTriggered;
+	Vector2 lastRotateTouchPosition;
+	bool wasMultiTouch;
+
 	public event Action<Vector2> OnCursorEnter;
 	public event Action<Vector2> OnCursorMove;
 	public event Action OnCursorExit;
@@ -68,6 +77,34 @@ public class MatchInput : MonoBehaviour
 
 	void ProcessMouse()
 	{
+		// --- Touch: two-finger drag to rotate (replaces right-mouse drag) ---
+		if(Input.touchCount >= 2)
+		{
+			Touch t0 = Input.GetTouch(0);
+			Touch t1 = Input.GetTouch(1);
+			if(t0.phase == TouchPhase.Began || t1.phase == TouchPhase.Began || !wasMultiTouch)
+			{
+				lastRotateTouchPosition = (t0.position + t1.position) * 0.5f;
+				wasMultiTouch = true;
+			}
+			else
+			{
+				Vector2 currentMid = (t0.position + t1.position) * 0.5f;
+				Vector2 delta = currentMid - lastRotateTouchPosition;
+				if(delta.sqrMagnitude > 0)
+					OnRotateDrag?.Invoke(delta);
+				lastRotateTouchPosition = currentMid;
+			}
+			ResetPrimaryState();
+			EmitCursorExitIfNeeded();
+			return;
+		}
+		else
+		{
+			wasMultiTouch = false;
+		}
+
+		// --- Mouse right-click: rotate / remove ---
 		if(Input.GetMouseButton(1))
 		{
 			Vector2 rotateDelta = new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
@@ -91,6 +128,29 @@ public class MatchInput : MonoBehaviour
 
 		Vector2 absolutePosition = Board.Current.WorldToAbsolutePosition(hit.point);
 
+		// --- Touch: long-press to remove stone (replaces right-click) ---
+		if(Input.touchCount == 1)
+		{
+			Touch t = Input.GetTouch(0);
+			if(t.phase == TouchPhase.Began)
+			{
+				touchStartTime = Time.unscaledTime;
+				touchStartPosition = t.position;
+				longPressTriggered = false;
+			}
+			else if(t.phase == TouchPhase.Stationary || t.phase == TouchPhase.Moved)
+			{
+				if(!longPressTriggered
+					&& (t.position - touchStartPosition).magnitude < LongPressMoveTolerance * Screen.height
+					&& Time.unscaledTime - touchStartTime >= LongPressDuration)
+				{
+					longPressTriggered = true;
+					if(Board.Current.Topology != BoardUtility.BoardTopology.Sphere)
+						OnRemove?.Invoke(absolutePosition);
+				}
+			}
+		}
+
 		if(!hasCursorPosition)
 		{
 			hasCursorPosition = true;
@@ -105,7 +165,7 @@ public class MatchInput : MonoBehaviour
 		}
 
 		ProcessPrimaryPlacement(absolutePosition);
-		if(Input.GetMouseButtonDown(1))
+		if(Input.GetMouseButtonDown(1) && Input.touchCount == 0)
 		{
 			if(Board.Current.Topology == BoardUtility.BoardTopology.Sphere)
 				return;

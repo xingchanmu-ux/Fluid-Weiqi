@@ -1,0 +1,36 @@
+name: Build Android APK
+on:
+  workflow_dispatch: {}
+jobs:
+  buildAndroid:
+    name: Build for Android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android
+          restore-keys: |
+            Library-
+
+      - name: Build Android APK
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          targetPlatform: Android
+          androidAppBundle: false
+          versioning: None
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fluid-Weiqi-Android
+          path: build/Android/*.apk
