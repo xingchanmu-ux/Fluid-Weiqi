@@ -13,6 +13,7 @@ jobs:
         uses: game-ci/unity-builder@v4
         with:
           targetPlatform: WebGL
+          skipActivation: true
           customParameters: -batchmode -quit -createManualActivationFile
         continue-on-error: true
 
