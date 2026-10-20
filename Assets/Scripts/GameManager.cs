@@ -53,8 +53,10 @@ public class GameManager : MonoBehaviour
 			gameObject.AddComponent<AudioManager>();
 
 		// Create Steam manager
+#if !DISABLESTEAMWORKS
 		if(SteamManager.Instance == null)
 			gameObject.AddComponent<SteamManager>();
+#endif
 
 		// Initialize network services after Steam is ready
 		InitializeNetworkServices();

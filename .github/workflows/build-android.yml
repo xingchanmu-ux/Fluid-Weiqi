@@ -28,7 +28,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: Android
-          androidAppBundle: false
+          androidExportType: apk
           versioning: None
 
       - name: Upload APK
